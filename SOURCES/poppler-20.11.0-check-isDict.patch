@@ -1,0 +1,34 @@
+--- a/poppler/PDFDoc.cc
++++ b/poppler/PDFDoc.cc
+@@ -1757,6 +1757,9 @@ void PDFDoc::replacePageDict(int pageNo,
+ {
+     Ref *refPage = getCatalog()->getPageRef(pageNo);
+     Object page = getXRef()->fetch(*refPage);
++    if (!page.isDict()) {
++        return;
++    }
+     Dict *pageDict = page.getDict();
+     pageDict->remove("MediaBoxssdf");
+     pageDict->remove("MediaBox");
+--- a/utils/pdfunite.cc
++++ b/utils/pdfunite.cc
+@@ -293,9 +293,18 @@ int main(int argc, char *argv[])
+             const PDFRectangle *cropBox = nullptr;
+             if (docs[i]->getCatalog()->getPage(j)->isCropped())
+                 cropBox = docs[i]->getCatalog()->getPage(j)->getCropBox();
+-            docs[i]->replacePageDict(j, docs[i]->getCatalog()->getPage(j)->getRotate(), docs[i]->getCatalog()->getPage(j)->getMediaBox(), cropBox);
+             Ref *refPage = docs[i]->getCatalog()->getPageRef(j);
+             Object page = docs[i]->getXRef()->fetch(*refPage);
++            if (!page.isDict()) {
++                fclose(f);
++                delete yRef;
++                delete countRef;
++                delete outStr;
++                error(errSyntaxError, -1, "PDFDoc::replacePageDict failed.");
++                return -1;
++            } else {
++              docs[i]->replacePageDict(j, docs[i]->getCatalog()->getPage(j)->getRotate(), docs[i]->getCatalog()->getPage(j)->getMediaBox(), cropBox);
++            }
+             Dict *pageDict = page.getDict();
+             Object *resDict = docs[i]->getCatalog()->getPage(j)->getResourceDictObject();
+             if (resDict->isDict()) {
