@@ -4,7 +4,7 @@
 Summary: PDF rendering library
 Name:    poppler
 Version: 20.11.0
-Release: 6%{?dist}
+Release: 10%{?dist}
 License: (GPLv2 or GPLv3) and GPLv2+ and LGPLv2+ and MIT
 URL:     http://poppler.freedesktop.org/
 Source0: http://poppler.freedesktop.org/poppler-%{version}.tar.xz
@@ -32,6 +32,18 @@ Patch24: poppler-20.11.0-hints.patch
 
 # https://bugzilla.redhat.com/show_bug.cgi?id=2124527
 Patch25: poppler-20.11.0-jbig-symbol-overflow.patch
+
+# https://bugzilla.redhat.com/show_bug.cgi?id=2189815
+Patch26: poppler-20.11.0-pdfunite-broken-document.patch
+
+# https://bugzilla.redhat.com/show_bug.cgi?id=2189811
+Patch27: poppler-20.11.0-pdfunite-check-isDict.patch
+
+# https://bugzilla.redhat.com/show_bug.cgi?id=2189814
+Patch28: poppler-20.11.0-check-isDict.patch
+
+# https://bugzilla.redhat.com/show_bug.cgi?id=2189810
+Patch29: poppler-20.11.0-XRef-check-isDict.patch
 
 BuildRequires: cmake
 BuildRequires: gettext-devel
@@ -237,6 +249,22 @@ test "$(pkg-config --modversion poppler-splash)" = "%{version}"
 %{_mandir}/man1/*
 
 %changelog
+* Fri Jun  9 2023 Marek Kasik <mkasik@redhat.com> - 21.01.0-10
+- Check XRef's Catalog for being a Dict
+- Resolves: #2189816
+
+* Fri Jun  9 2023 Marek Kasik <mkasik@redhat.com> - 20.11.0-9
+- Check isDict before calling getDict 2
+- Resolves: #2189837
+
+* Fri Jun  9 2023 Marek Kasik <mkasik@redhat.com> - 20.11.0-8
+- Check isDict before calling getDict
+- Resolves: #2189823
+
+* Fri Jun  9 2023 Marek Kasik <mkasik@redhat.com> - 20.11.0-7
+- Don't crash in broken documents
+- Resolves: #2189844
+
 * Tue Sep 20 2022 Marek Kasik <mkasik@redhat.com> - 20.11.0-6
 - Check for overflow when computing number of symbols
 - in JBIG2 text region
