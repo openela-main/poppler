@@ -1,0 +1,28 @@
+From 5dbe101b7c3561aedf33872e218b8d1b6984f623 Mon Sep 17 00:00:00 2001
+From: Albert Astals Cid <aacid@kde.org>
+Date: Sat, 8 May 2021 00:54:13 +0200
+Subject: [PATCH] Restore setting the Encoding in createAnnotDrawFont
+
+It was removed in 9db685f379c1c9195b5f0c9a693e7a581e6b214f and as far as
+i remember the reason was that signatures created with that hung Adobe
+Reader, but I can't reproduce it anymore and on top of that is causing
+regressions when rendering PDF files (Issue #1070) so restore it.
+---
+ poppler/Annot.cc | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/poppler/Annot.cc b/poppler/Annot.cc
+index 5287b4dc..40b1085a 100644
+--- a/poppler/Annot.cc
++++ b/poppler/Annot.cc
+@@ -2852,6 +2852,7 @@ static GfxFont *createAnnotDrawFont(XRef *xref, Dict *fontParentDict, const char
+     Dict *fontDict = new Dict(xref);
+     fontDict->add("BaseFont", Object(objName, fontname));
+     fontDict->add("Subtype", Object(objName, "Type1"));
++    fontDict->add("Encoding", Object(objName, "WinAnsiEncoding"));
+ 
+     Object fontsDictObj = fontParentDict->lookup("Font");
+     if (!fontsDictObj.isDict()) {
+-- 
+2.31.1
+

@@ -1,0 +1,439 @@
+--- poppler/glib/poppler-document.cc
++++ poppler/glib/poppler-document.cc
+@@ -869,12 +869,12 @@ GTree *poppler_document_create_dests_tre
+     // Iterate from name-dict
+     const int nDests = catalog->numDests();
+     for (i = 0; i < nDests; ++i) {
+-        // The names of name-dict cannot contain \0,
+-        // so we can use strlen().
+-        auto name = catalog->getDestsName(i);
+-        key = poppler_named_dest_from_bytestring(reinterpret_cast<const guint8 *>(name), strlen(name));
+         std::unique_ptr<LinkDest> link_dest = catalog->getDestsDest(i);
+         if (link_dest) {
++            // The names of name-dict cannot contain \0,
++            // so we can use strlen().
++            auto name = catalog->getDestsName(i);
++            key = poppler_named_dest_from_bytestring(reinterpret_cast<const guint8 *>(name), strlen(name));
+             dest = _poppler_dest_new_goto(document, link_dest.get());
+             g_tree_insert(tree, key, dest);
+         }
+@@ -883,10 +883,10 @@ GTree *poppler_document_create_dests_tre
+     // Iterate form name-tree
+     const int nDestsNameTree = catalog->numDestNameTree();
+     for (i = 0; i < nDestsNameTree; ++i) {
+-        auto name = catalog->getDestNameTreeName(i);
+-        key = poppler_named_dest_from_bytestring(reinterpret_cast<const guint8 *>(name->c_str()), name->getLength());
+         std::unique_ptr<LinkDest> link_dest = catalog->getDestNameTreeDest(i);
+         if (link_dest) {
++            auto name = catalog->getDestNameTreeName(i);
++            key = poppler_named_dest_from_bytestring(reinterpret_cast<const guint8 *>(name->c_str()), name->getLength());
+             dest = _poppler_dest_new_goto(document, link_dest.get());
+             g_tree_insert(tree, key, dest);
+         }
+@@ -3405,6 +3405,7 @@ PopplerFormField *poppler_document_get_f
+     unsigned fieldNum;
+     FormPageWidgets *widgets;
+     FormWidget *field;
++    PopplerFormField *formField;
+ 
+     FormWidget::decodeID(id, &pageNum, &fieldNum);
+ 
+@@ -3417,8 +3418,14 @@ PopplerFormField *poppler_document_get_f
+         return nullptr;
+ 
+     field = widgets->getWidget(fieldNum);
+-    if (field)
+-        return _poppler_form_field_new(document, field);
++    if (field) {
++        formField = _poppler_form_field_new(document, field);
++        delete widgets;
++
++        return formField;
++    }
++
++    delete widgets;
+ 
+     return nullptr;
+ }
+--- poppler-21.01.0/glib/poppler-page.cc
++++ poppler-21.01.0/glib/poppler-page.cc
+@@ -1530,15 +1530,18 @@ void poppler_page_add_annot(PopplerPage
+              * first remove cropbox of the prior page before adding cropbox of the new page later */
+             quads = new_quads_from_offset_cropbox(crop_box, annot_markup->getQuadrilaterals(), FALSE);
+             annot_markup->setQuadrilaterals(quads);
++            delete quads;
+         }
+         if (page_is_rotated) {
+             /* Quadrilateral's coords need to be saved un-rotated (same as rect coords) */
+             quads = _page_new_quads_unrotated(page->page, annot_markup->getQuadrilaterals());
+             annot_markup->setQuadrilaterals(quads);
++            delete quads;
+         }
+         /* Add to annot's quadrilaterals the offset for the cropbox of the new page */
+         quads = new_quads_from_offset_cropbox(page_crop_box, annot_markup->getQuadrilaterals(), TRUE);
+         annot_markup->setQuadrilaterals(quads);
++        delete quads;
+     }
+ 
+     page->page->addAnnot(annot->annot);
+--- poppler-21.01.0/glib/poppler-structure-element.cc
++++ poppler-21.01.0/glib/poppler-structure-element.cc
+@@ -1090,6 +1090,8 @@ static inline void convert_doubles_array
+     for (guint i = 0; i < *n_values; i++) {
+         doubles[i] = object->arrayGet(i).getNum();
+     }
++
++    values = &doubles;
+ }
+ 
+ static inline void convert_color(Object *object, PopplerColor *color)
+--- poppler-21.01.0/poppler/Form.cc
++++ poppler-21.01.0/poppler/Form.cc
+@@ -549,6 +549,7 @@ bool FormWidgetSignature::signDocument(c
+     GooString *fname = new GooString(saveFilename);
+     if (doc->saveAs(fname, writeForceIncremental) != errNone) {
+         fprintf(stderr, "signDocument: error saving to file \"%s\"\n", saveFilename);
++        delete fname;
+         return false;
+     }
+ 
+@@ -563,6 +564,8 @@ bool FormWidgetSignature::signDocument(c
+     FILE *file = openFile(saveFilename, "r+b");
+     if (!updateOffsets(file, objStart, objEnd, &sigStart, &sigEnd, &fileSize)) {
+         fprintf(stderr, "signDocument: unable update byte range\n");
++        delete fname;
++        fclose(file);
+         return false;
+     }
+ 
+@@ -574,15 +577,21 @@ bool FormWidgetSignature::signDocument(c
+     // and sign it
+     const std::unique_ptr<GooString> signature = sigHandler.signDetached(password);
+-    if (!signature)
++    if (!signature) {
++        delete fname;
++        fclose(file);
+         return false;
++    }
+ 
+     // write signature to saved file
+     if (!updateSignature(file, sigStart, sigEnd, signature.get())) {
+         fprintf(stderr, "signDocument: unable update signature\n");
++        delete fname;
++        fclose(file);
+         return false;
+     }
+     signatureField->setSignature(*signature);
+ 
++    delete fname;
+     fclose(file);
+ 
+     return true;
+@@ -662,22 +670,30 @@ bool FormWidgetSignature::updateOffsets(
+         }
+     }
+ 
+-    if (*sigStart == -1 || *sigEnd == -1)
++    if (*sigStart == -1 || *sigEnd == -1) {
++        free(buf);
+         return false;
++    }
+ 
+     // Search for ByteRange array and update offsets
+     for (int i = 0; i < bufSize - 10; i++) {
+         if (buf[i] == '/' && strncmp(&buf[i], "/ByteRange", 10) == 0) {
+             // update range
+             char *p = setNextOffset(&buf[i], *sigStart);
+-            if (!p)
++            if (!p) {
++                free(buf);
+                 return false;
++            }
+             p = setNextOffset(p, *sigEnd);
+-            if (!p)
++            if (!p) {
++                free(buf);
+                 return false;
++            }
+             p = setNextOffset(p, *fileSize - *sigEnd);
+-            if (!p)
++            if (!p) {
++                free(buf);
+                 return false;
++            }
+             break;
+         }
+     }
+--- poppler-21.01.0/poppler/JBIG2Stream.cc
++++ poppler-21.01.0/poppler/JBIG2Stream.cc
+@@ -2834,6 +2834,8 @@ JBIG2Bitmap *JBIG2Stream::readGenericBit
+ 
+         if (unlikely(!codingLine || !refLine)) {
+             error(errSyntaxError, curStr->getPos(), "Bad width in JBIG2 generic bitmap");
++            gfree(refLine);
++            gfree(codingLine);
+             delete bitmap;
+             return nullptr;
+         }
+--- poppler-21.01.0/poppler/Lexer.cc
++++ poppler-21.01.0/poppler/Lexer.cc
+@@ -461,6 +461,7 @@ Object Lexer::getObj(int objNum)
+             } else if (n == tokBufSize) {
+                 error(errSyntaxError, getPos(), "Warning: name token is longer than what the specification says it can be");
+                 *p = c;
++                delete s;
+                 s = new GooString(tokBuf, n);
+             } else {
+                 s->append((char)c);
+@@ -468,6 +468,7 @@ Object Lexer::getObj(int objNum)
+         }
+         if (n < tokBufSize) {
+             *p = '\0';
++            delete s;
+             return Object(objName, tokBuf);
+         } else {
+             Object obj(objName, s->c_str());
+--- poppler/poppler/CairoOutputDev.cc
++++ poppler/poppler/CairoOutputDev.cc
+@@ -2921,8 +2921,10 @@ void CairoOutputDev::setMimeData(GfxStat
+ 
+     // colorspace in stream dict may be different from colorspace in jpx
+     // data
+-    if (strKind == strJPX && colorSpace)
++    if (strKind == strJPX && colorSpace) {
++        delete colorSpace;
+         return;
++    }
+ 
+     // only embed mime data for gray, rgb, and cmyk colorspaces.
+     if (colorSpace) {
+--- poppler/poppler/TextOutputDev.cc
++++ poppler/poppler/TextOutputDev.cc
+@@ -20,7 +20,7 @@
+ // Copyright (C) 2006 Jeff Muizelaar <jeff@infidigm.net>
+ // Copyright (C) 2007, 2008, 2012, 2017 Adrian Johnson <ajohnson@redneon.com>
+ // Copyright (C) 2008 Koji Otani <sho@bbr.jp>
+-// Copyright (C) 2008, 2010-2012, 2014-2020 Albert Astals Cid <aacid@kde.org>
++// Copyright (C) 2008, 2010-2012, 2014-2021 Albert Astals Cid <aacid@kde.org>
+ // Copyright (C) 2008 Pino Toscano <pino@kde.org>
+ // Copyright (C) 2008, 2010 Hib Eris <hib@hiberis.nl>
+ // Copyright (C) 2009 Ross Moore <ross@maths.mq.edu.au>
+@@ -1619,7 +1619,6 @@ TextBlock::~TextBlock()
+ 
+ void TextBlock::addWord(TextWord *word)
+ {
+-    pool->addWord(word);
+     if (xMin > xMax) {
+         xMin = word->xMin;
+         xMax = word->xMax;
+@@ -1639,6 +1638,7 @@ void TextBlock::addWord(TextWord *word)
+             yMax = word->yMax;
+         }
+     }
++    pool->addWord(word);
+ }
+ 
+ void TextBlock::coalesce(const UnicodeMap *uMap, double fixedPitch)
+@@ -3064,11 +3064,13 @@ void TextPage::coalesce(bool physLayout,
+             word0 = pool->getPool(startBaseIdx);
+             pool->setPool(startBaseIdx, word0->next);
+             word0->next = nullptr;
+-            blk = new TextBlock(this, rot);
+-            blk->addWord(word0);
+ 
+             fontSize = word0->fontSize;
+             minBase = maxBase = word0->base;
++
++            blk = new TextBlock(this, rot);
++            blk->addWord(word0);
++
+             colSpace1 = minColSpacing1 * fontSize;
+             colSpace2 = minColSpacing2 * fontSize;
+             lineSpace = maxLineSpacingDelta * fontSize;
+@@ -3095,9 +3097,9 @@ void TextPage::coalesce(bool physLayout,
+                             }
+                             word1 = word1->next;
+                             word2->next = nullptr;
++                            newMinBase = word2->base;
+                             blk->addWord(word2);
+                             found = true;
+-                            newMinBase = word2->base;
+                         } else {
+                             word0 = word1;
+                             word1 = word1->next;
+@@ -3123,9 +3125,9 @@ void TextPage::coalesce(bool physLayout,
+                             }
+                             word1 = word1->next;
+                             word2->next = nullptr;
++                            newMaxBase = word2->base;
+                             blk->addWord(word2);
+                             found = true;
+-                            newMaxBase = word2->base;
+                         } else {
+                             word0 = word1;
+                             word1 = word1->next;
+@@ -3198,12 +3200,12 @@ void TextPage::coalesce(bool physLayout,
+                                 }
+                                 word1 = word1->next;
+                                 word2->next = nullptr;
+-                                blk->addWord(word2);
+                                 if (word2->base < minBase) {
+                                     minBase = word2->base;
+                                 } else if (word2->base > maxBase) {
+                                     maxBase = word2->base;
+                                 }
++                                blk->addWord(word2);
+                                 found = true;
+                                 break;
+                             } else {
+@@ -3246,12 +3248,12 @@ void TextPage::coalesce(bool physLayout,
+                                 }
+                                 word1 = word1->next;
+                                 word2->next = nullptr;
+-                                blk->addWord(word2);
+                                 if (word2->base < minBase) {
+                                     minBase = word2->base;
+                                 } else if (word2->base > maxBase) {
+                                     maxBase = word2->base;
+                                 }
++                                blk->addWord(word2);
+                                 found = true;
+                                 break;
+                             } else {
+@@ -4456,13 +4456,18 @@ class TextSelectionSizer : public TextSe
+ {
+ public:
+     TextSelectionSizer(TextPage *page, double scale);
+-    ~TextSelectionSizer() override { }
++    ~TextSelectionSizer() override { delete list; }
+ 
+     void visitBlock(TextBlock *block, TextLine *begin, TextLine *end, const PDFRectangle *selection) override {};
+     void visitLine(TextLine *line, TextWord *begin, TextWord *end, int edge_begin, int edge_end, const PDFRectangle *selection) override;
+     void visitWord(TextWord *word, int begin, int end, const PDFRectangle *selection) override {};
+ 
+-    std::vector<PDFRectangle *> *getRegion() { return list; }
++    std::vector<PDFRectangle *> *takeRegion()
++    {
++        auto aux = list;
++        list = nullptr;
++        return aux;
++    }
+ 
+ private:
+     std::vector<PDFRectangle *> *list;
+@@ -5063,7 +5068,7 @@ std::vector<PDFRectangle *> *TextPage::g
+ 
+     visitSelection(&sizer, selection, style);
+ 
+-    return sizer.getRegion();
++    return sizer.takeRegion();
+ }
+ 
+ GooString *TextPage::getSelectionText(const PDFRectangle *selection, SelectionStyle style)
+--- poppler/poppler/XRef.cc
++++ poppler/poppler/XRef.cc
+@@ -402,6 +402,7 @@ int XRef::reserve(int newSize)
+ 
+         void *p = greallocn_checkoverflow(entries, realNewSize, sizeof(XRefEntry));
+         if (p == nullptr) {
++            entries = nullptr;
+             return 0;
+         }
+ 
+@@ -835,7 +836,6 @@ bool XRef::constructXRef(bool *wasRecons
+     int offset = 0;
+ 
+     resize(0); // free entries properly
+-    gfree(entries);
+     capacity = 0;
+     size = 0;
+     entries = nullptr;
+--- poppler/test/pdf-inspector.cc
++++ poppler/test/pdf-inspector.cc
+@@ -43,6 +43,7 @@ class PdfInspector
+ {
+ public:
+     PdfInspector();
++    ~PdfInspector();
+ 
+     void set_file_name(const char *file_name);
+     void load(const char *file_name);
+@@ -108,6 +109,11 @@ PdfInspector::PdfInspector()
+     load(nullptr);
+ }
+ 
++PdfInspector::~PdfInspector(void)
++{
++    delete output;
++}
++
+ void PdfInspector::set_file_name(const char *file_name)
+ {
+     GtkWidget *widget;
+--- poppler/utils/HtmlOutputDev.cc
++++ poppler/utils/HtmlOutputDev.cc
+@@ -1337,6 +1337,7 @@ void HtmlOutputDev::drawPngImage(GfxStat
+     // TODO can we calculate the resolution of the image?
+     if (!writer->init(f1, width, height, 72, 72)) {
+         error(errInternal, -1, "Can't init PNG for image '{0:t}'", fName);
++        delete fName;
+         delete writer;
+         fclose(f1);
+         return;
+@@ -1378,6 +1378,7 @@ void HtmlOutputDev::drawPngImage(GfxStat
+ 
+             if (!writer->writeRow(row_pointer)) {
+                 error(errIO, -1, "Failed to write into PNG '{0:t}'", fName);
++                delete fName;
+                 delete writer;
+                 delete imgStr;
+                 fclose(f1);
+@@ -1413,6 +1414,7 @@ void HtmlOutputDev::drawPngImage(GfxStat
+ 
+             if (!writer->writeRow(&png_row)) {
+                 error(errIO, -1, "Failed to write into PNG '{0:t}'", fName);
++                delete fName;
+                 delete writer;
+                 fclose(f1);
+                 gfree(png_row);
+--- poppler/utils/pdftotext.cc
++++ poppler/utils/pdftotext.cc
+@@ -329,6 +329,7 @@ int main(int argc, char *argv[])
+             fputs("<pre>\n", f);
+             if (f != stdout) {
+                 fclose(f);
++                f = nullptr;
+             }
+         }
+     }
+@@ -348,8 +349,9 @@ int main(int argc, char *argv[])
+                 printWordBBox(f, doc, textOut, firstPage, lastPage);
+             }
+         }
+-        if (f != stdout) {
++        if (f != stdout && f != nullptr) {
+             fclose(f);
++            f = nullptr;
+         }
+     } else {
+         textOut = new TextOutputDev(textFileName->c_str(), physLayout, fixedPitch, rawOrder, htmlMeta, discardDiag);
+@@ -390,7 +392,7 @@ int main(int argc, char *argv[])
+             fputs("</pre>\n", f);
+         fputs("</body>\n", f);
+         fputs("</html>\n", f);
+-        if (f != stdout) {
++        if (f != stdout && f != nullptr) {
+             fclose(f);
+         }
+     }
+@@ -533,7 +533,9 @@ void printWordBBox(FILE *f, PDFDoc *doc,
+         for (int i = 0; i < word_length; ++i) {
+             word = wordlist->get(i);
+             word->getBBox(&xMinA, &yMinA, &xMaxA, &yMaxA);
+-            const std::string myString = myXmlTokenReplace(word->getText()->c_str());
++            GooString *wordText = word->getText();
++            const std::string myString = myXmlTokenReplace(wordText->c_str());
++            delete wordText;
+             fprintf(f, "    <word xMin=\"%f\" yMin=\"%f\" xMax=\"%f\" yMax=\"%f\">%s</word>\n", xMinA, yMinA, xMaxA, yMaxA, myString.c_str());
+         }
+         fprintf(f, "  </page>\n");
