@@ -1,0 +1,21 @@
+From dcd5bd8238ea448addd102ff045badd0aca1b990 Mon Sep 17 00:00:00 2001
+From: crt <chluo@cse.cuhk.edu.hk>
+Date: Wed, 27 Jul 2022 08:40:02 +0000
+Subject: pdfseparate: Check XRef's Catalog for being a Dict
+
+
+diff --git a/poppler/PDFDoc.cc b/poppler/PDFDoc.cc
+index 351140af..c26a41c4 100644
+--- a/poppler/PDFDoc.cc
++++ b/poppler/PDFDoc.cc
+@@ -886,6 +886,10 @@ int PDFDoc::savePageAs(const GooString &name, int pageNo)
+ 
+     // get and mark output intents etc.
+     Object catObj = getXRef()->getCatalog();
++    if (!catObj.isDict()) {
++        error(errSyntaxError, -1, "XRef's Catelog is not a dictionary");
++        return errOpenFile;
++    }
+     Dict *catDict = catObj.getDict();
+     Object pagesObj = catDict->lookup("Pages");
+     Object afObj = catDict->lookupNF("AcroForm").copy();
