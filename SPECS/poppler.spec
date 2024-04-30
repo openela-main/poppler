@@ -3,7 +3,7 @@
 Summary: PDF rendering library
 Name:    poppler
 Version: 21.01.0
-Release: 18%{?dist}
+Release: 19%{?dist}
 License: (GPLv2 or GPLv3) and GPLv2+ and LGPLv2+ and MIT
 URL:     http://poppler.freedesktop.org/
 Source0: http://poppler.freedesktop.org/poppler-%{version}.tar.xz
@@ -240,6 +240,10 @@ test "$(pkg-config --modversion poppler-qt5)" = "%{version}"
 %{_mandir}/man1/*
 
 %changelog
+* Thu Oct 12 2023 Marek Kasik <mkasik@redhat.com> - 21.01.0-19
+- Rebuild for inclusion of poppler-glib-doc in CRB
+- Resolves: RHEL-4274
+
 * Fri Jun  9 2023 Marek Kasik <mkasik@redhat.com> - 21.01.0-18
 - Check XRef's Catalog for being a Dict
 - Resolves: #2189820
