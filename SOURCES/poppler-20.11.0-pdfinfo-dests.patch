@@ -1,0 +1,110 @@
+From 0554731052d1a97745cb179ab0d45620589dd9c4 Mon Sep 17 00:00:00 2001
+From: Albert Astals Cid <aacid@kde.org>
+Date: Fri, 7 Jun 2024 00:54:55 +0200
+Subject: pdfinfo: Fix crash in broken documents when using -dests
+
+Modified by Marek Kasik due to the backport.
+
+diff --git a/utils/pdfinfo.cc b/utils/pdfinfo.cc
+index 5d37ef64..7d569749 100644
+--- a/utils/pdfinfo.cc
++++ b/utils/pdfinfo.cc
+@@ -15,7 +15,7 @@
+ // under GPL version 2 or later
+ //
+ // Copyright (C) 2006 Dom Lachowicz <cinamod@hotmail.com>
+-// Copyright (C) 2007-2010, 2012, 2016-2020 Albert Astals Cid <aacid@kde.org>
++// Copyright (C) 2007-2010, 2012, 2016-2020, 2024 Albert Astals Cid <aacid@kde.org>
+ // Copyright (C) 2010 Hib Eris <hib@hiberis.nl>
+ // Copyright (C) 2011 Vittal Aithal <vittal.aithal@cognidox.com>
+ // Copyright (C) 2012, 2013, 2016-2018 Adrian Johnson <ajohnson@redneon.com>
+@@ -107,6 +107,23 @@ static const ArgDesc argDesc[] = { { "-f
+                                    { "-?", argFlag, &printHelp, 0, "print usage information" },
+                                    {} };
+ 
++static void printStdTextString(const std::string &s, const UnicodeMap *uMap)
++{
++    char buf[8];
++    Unicode *u;
++    int i, len;
++    GooString *s1 = new GooString(s);
++
++    if (s1 != nullptr) {
++        len = TextStringToUCS4(s1, &u);
++        for (i = 0; i < len; i++) {
++            int n = uMap->mapUnicode(u[i], buf, sizeof(buf));
++            fwrite(buf, 1, n, stdout);
++        }
++        delete s1;
++    }
++}
++
+ static void printInfoString(Dict *infoDict, const char *key, const char *text, const UnicodeMap *uMap)
+ {
+     const GooString *s1;
+@@ -278,11 +295,6 @@ static void printStruct(const StructElem
+     }
+ }
+ 
+-struct GooStringCompare
+-{
+-    bool operator()(GooString *lhs, GooString *rhs) const { return lhs->cmp(const_cast<GooString *>(rhs)) < 0; }
+-};
+-
+ static void printLinkDest(const std::unique_ptr<LinkDest> &dest)
+ {
+     GooString s;
+@@ -353,29 +365,25 @@ static void printLinkDest(const std::uni
+ 
+ static void printDestinations(PDFDoc *doc, const UnicodeMap *uMap)
+ {
+-    std::map<Ref, std::map<GooString *, std::unique_ptr<LinkDest>, GooStringCompare>> map;
++    std::map<Ref, std::map<std::string, std::unique_ptr<LinkDest>>> map;
+ 
+     int numDests = doc->getCatalog()->numDestNameTree();
+     for (int i = 0; i < numDests; i++) {
+-        GooString *name = new GooString(doc->getCatalog()->getDestNameTreeName(i));
++        const GooString *name = doc->getCatalog()->getDestNameTreeName(i);
+         std::unique_ptr<LinkDest> dest = doc->getCatalog()->getDestNameTreeDest(i);
+-        if (dest && dest->isPageRef()) {
++        if (name && dest && dest->isPageRef()) {
+             Ref pageRef = dest->getPageRef();
+-            map[pageRef].insert(std::make_pair(name, std::move(dest)));
+-        } else {
+-            delete name;
++            map[pageRef].insert(std::make_pair(name->toStr(), std::move(dest)));
+         }
+     }
+ 
+     numDests = doc->getCatalog()->numDests();
+     for (int i = 0; i < numDests; i++) {
+-        GooString *name = new GooString(doc->getCatalog()->getDestsName(i));
++        const char *name = doc->getCatalog()->getDestsName(i);
+         std::unique_ptr<LinkDest> dest = doc->getCatalog()->getDestsDest(i);
+-        if (dest && dest->isPageRef()) {
++        if (name && dest && dest->isPageRef()) {
+             Ref pageRef = dest->getPageRef();
+             map[pageRef].insert(std::make_pair(name, std::move(dest)));
+-        } else {
+-            delete name;
+         }
+     }
+ 
+@@ -389,16 +397,8 @@ static void printDestinations(PDFDoc *do
+                     printf("%4d ", i);
+                     printLinkDest(it.second);
+                     printf(" \"");
+-                    Unicode *u;
+-                    char buf[8];
+-                    const int len = TextStringToUCS4(it.first, &u);
+-                    for (int j = 0; j < len; j++) {
+-                        const int n = uMap->mapUnicode(u[j], buf, sizeof(buf));
+-                        fwrite(buf, 1, n, stdout);
+-                    }
+-                    gfree(u);
++                    printStdTextString(it.first, uMap);
+                     printf("\"\n");
+-                    delete it.first;
+                 }
+             }
+         }

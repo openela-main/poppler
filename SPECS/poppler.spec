@@ -4,7 +4,7 @@
 Summary: PDF rendering library
 Name:    poppler
 Version: 20.11.0
-Release: 11%{?dist}
+Release: 12%{?dist}
 License: (GPLv2 or GPLv3) and GPLv2+ and LGPLv2+ and MIT
 URL:     http://poppler.freedesktop.org/
 Source0: http://poppler.freedesktop.org/poppler-%{version}.tar.xz
@@ -47,6 +47,9 @@ Patch29: poppler-20.11.0-XRef-check-isDict.patch
 
 # https://issues.redhat.com/browse/RHEL-4255
 Patch30: poppler-20.11.0-fix-crash-in-FoFiType1C.patch
+
+# https://issues.redhat.com/browse/RHEL-44330
+Patch31: poppler-20.11.0-pdfinfo-dests.patch
 
 BuildRequires: cmake
 BuildRequires: gettext-devel
@@ -252,12 +255,17 @@ test "$(pkg-config --modversion poppler-splash)" = "%{version}"
 %{_mandir}/man1/*
 
 %changelog
-* Thu Oct 12 2023 Marek Kasik <mkasik@redhat.com> - 21.01.0-11
+* Fri Jul 26 2024 Marek Kasik <mkasik@redhat.com> - 20.11.0-12
+- Fix crash in broken documents when using -dests
+- Fix versions in changelog
+- Resolves: RHEL-44330
+
+* Thu Oct 12 2023 Marek Kasik <mkasik@redhat.com> - 20.11.0-11
 - Fix crashes in FoFiType1C
 - Rebuild for inclusion of poppler-glib-doc in CRB
 - Resolves: RHEL-4255, RHEL-4273
 
-* Fri Jun  9 2023 Marek Kasik <mkasik@redhat.com> - 21.01.0-10
+* Fri Jun  9 2023 Marek Kasik <mkasik@redhat.com> - 20.11.0-10
 - Check XRef's Catalog for being a Dict
 - Resolves: #2189816
 
