@@ -1,0 +1,11 @@
+--- poppler-21.01.0/poppler/Form.cc
++++ poppler-21.01.0/poppler/Form.cc
+@@ -603,7 +603,7 @@ bool FormWidgetSignature::signDocument(c
+ // Get start and end file position of objNum in the PDF named filename.
+ bool FormWidgetSignature::getObjectStartEnd(GooString *filename, int objNum, Goffset *objStart, Goffset *objEnd)
+ {
+-    PDFDoc newDoc(filename);
++    PDFDoc newDoc(filename->copy());
+     if (!newDoc.isOk())
+         return false;
+ 

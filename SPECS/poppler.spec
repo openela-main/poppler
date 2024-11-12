@@ -3,7 +3,7 @@
 Summary: PDF rendering library
 Name:    poppler
 Version: 21.01.0
-Release: 19%{?dist}
+Release: 21%{?dist}
 License: (GPLv2 or GPLv3) and GPLv2+ and LGPLv2+ and MIT
 URL:     http://poppler.freedesktop.org/
 Source0: http://poppler.freedesktop.org/poppler-%{version}.tar.xz
@@ -46,6 +46,12 @@ Patch11: poppler-21.01.0-check-isDict.patch
 
 # https://bugzilla.redhat.com/show_bug.cgi?id=2189810
 Patch12: poppler-21.01.0-XRef-check-isDict.patch
+
+# https://issues.redhat.com/browse/RHEL-31934
+Patch13: poppler-21.01.0-copy-filename.patch
+
+# https://issues.redhat.com/browse/RHEL-44333
+Patch14: poppler-21.01.0-pdfinfo-dests.patch
 
 BuildRequires: make
 BuildRequires: cmake
@@ -240,6 +246,14 @@ test "$(pkg-config --modversion poppler-qt5)" = "%{version}"
 %{_mandir}/man1/*
 
 %changelog
+* Fri Jul 26 2024 Marek Kasik <mkasik@redhat.com> - 21.01.0-21
+- Fix crash in broken documents when using -dests
+- Resolves: RHEL-44333
+
+* Wed Apr 24 2024 Marek Kasik <mkasik@redhat.com> - 21.01.0-20
+- Fix a crash during signing
+- Resolves: RHEL-31934
+
 * Thu Oct 12 2023 Marek Kasik <mkasik@redhat.com> - 21.01.0-19
 - Rebuild for inclusion of poppler-glib-doc in CRB
 - Resolves: RHEL-4274
