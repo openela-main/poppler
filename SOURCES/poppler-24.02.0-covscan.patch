@@ -1,0 +1,197 @@
+--- poppler-21.01.0/glib/poppler-page.cc
++++ poppler-21.01.0/glib/poppler-page.cc
+@@ -1530,15 +1530,18 @@ void poppler_page_add_annot(PopplerPage
+              * first remove cropbox of the prior page before adding cropbox of the new page later */
+             quads = new_quads_from_offset_cropbox(crop_box, annot_markup->getQuadrilaterals(), FALSE);
+             annot_markup->setQuadrilaterals(quads);
++            delete quads;
+         }
+         if (page_is_rotated) {
+             /* Quadrilateral's coords need to be saved un-rotated (same as rect coords) */
+             quads = _page_new_quads_unrotated(page->page, annot_markup->getQuadrilaterals());
+             annot_markup->setQuadrilaterals(quads);
++            delete quads;
+         }
+         /* Add to annot's quadrilaterals the offset for the cropbox of the new page */
+         quads = new_quads_from_offset_cropbox(page_crop_box, annot_markup->getQuadrilaterals(), TRUE);
+         annot_markup->setQuadrilaterals(quads);
++        delete quads;
+     }
+ 
+     page->page->addAnnot(annot->annot);
+--- poppler/poppler/CairoOutputDev.cc
++++ poppler/poppler/CairoOutputDev.cc
+@@ -2921,6 +2921,7 @@ void CairoOutputDev::setMimeData(GfxStat
+     // colorspace in stream dict may be different from colorspace in jpx
+     // data
+     if (strKind == strJPX && colorSpace) {
++        delete colorSpace;
+         return;
+     }
+ 
+     // only embed mime data for gray, rgb, and cmyk colorspaces.
+--- poppler/poppler/TextOutputDev.cc
++++ poppler/poppler/TextOutputDev.cc
+@@ -1619,7 +1619,6 @@ TextBlock::~TextBlock()
+ 
+ void TextBlock::addWord(TextWord *word)
+ {
+-    pool->addWord(word);
+     if (xMin > xMax) {
+         xMin = word->xMin;
+         xMax = word->xMax;
+@@ -1639,6 +1638,7 @@ void TextBlock::addWord(TextWord *word)
+             yMax = word->yMax;
+         }
+     }
++    pool->addWord(word);
+ }
+ 
+ void TextBlock::coalesce(const UnicodeMap *uMap, double fixedPitch)
+@@ -3064,11 +3064,13 @@ void TextPage::coalesce(bool physLayout,
+             word0 = pool->getPool(startBaseIdx);
+             pool->setPool(startBaseIdx, word0->next);
+             word0->next = nullptr;
+-            blk = new TextBlock(this, rot);
+-            blk->addWord(word0);
+ 
+             fontSize = word0->fontSize;
+             minBase = maxBase = word0->base;
++
++            blk = new TextBlock(this, rot);
++            blk->addWord(word0);
++
+             colSpace1 = minColSpacing1 * fontSize;
+             colSpace2 = minColSpacing2 * fontSize;
+             lineSpace = maxLineSpacingDelta * fontSize;
+@@ -3095,9 +3097,9 @@ void TextPage::coalesce(bool physLayout,
+                             }
+                             word1 = word1->next;
+                             word2->next = nullptr;
++                            newMinBase = word2->base;
+                             blk->addWord(word2);
+                             found = true;
+-                            newMinBase = word2->base;
+                         } else {
+                             word0 = word1;
+                             word1 = word1->next;
+@@ -3123,9 +3125,9 @@ void TextPage::coalesce(bool physLayout,
+                             }
+                             word1 = word1->next;
+                             word2->next = nullptr;
++                            newMaxBase = word2->base;
+                             blk->addWord(word2);
+                             found = true;
+-                            newMaxBase = word2->base;
+                         } else {
+                             word0 = word1;
+                             word1 = word1->next;
+@@ -3198,12 +3200,12 @@ void TextPage::coalesce(bool physLayout,
+                                 }
+                                 word1 = word1->next;
+                                 word2->next = nullptr;
+-                                blk->addWord(word2);
+                                 if (word2->base < minBase) {
+                                     minBase = word2->base;
+                                 } else if (word2->base > maxBase) {
+                                     maxBase = word2->base;
+                                 }
++                                blk->addWord(word2);
+                                 found = true;
+                                 break;
+                             } else {
+@@ -3246,12 +3248,12 @@ void TextPage::coalesce(bool physLayout,
+                                 }
+                                 word1 = word1->next;
+                                 word2->next = nullptr;
+-                                blk->addWord(word2);
+                                 if (word2->base < minBase) {
+                                     minBase = word2->base;
+                                 } else if (word2->base > maxBase) {
+                                     maxBase = word2->base;
+                                 }
++                                blk->addWord(word2);
+                                 found = true;
+                                 break;
+                             } else {
+--- poppler/poppler/XRef.cc
++++ poppler/poppler/XRef.cc
+@@ -402,6 +402,7 @@ int XRef::reserve(int newSize)
+         void *p = grealloc(entries, newCapacity * sizeof(XRefEntry),
+                            /* checkoverflow=*/true);
+         if (p == nullptr) {
++            entries = nullptr;
+             return 0;
+         }
+ 
+@@ -835,7 +836,6 @@ bool XRef::constructXRef(bool *wasRecons
+     Goffset offset = 0;
+ 
+     resize(0); // free entries properly
+-    gfree(entries);
+     capacity = 0;
+     size = 0;
+     entries = nullptr;
+--- poppler/test/pdf-inspector.cc
++++ poppler/test/pdf-inspector.cc
+@@ -43,6 +43,7 @@ class PdfInspector
+ {
+ public:
+     PdfInspector();
++    ~PdfInspector();
+ 
+     void set_file_name(const char *file_name);
+     void load(const char *file_name);
+@@ -108,6 +109,11 @@ PdfInspector::PdfInspector()
+     load(nullptr);
+ }
+ 
++PdfInspector::~PdfInspector(void)
++{
++    delete output;
++}
++
+ void PdfInspector::set_file_name(const char *file_name)
+ {
+     GtkWidget *widget;
+--- poppler/utils/pdftotext.cc
++++ poppler/utils/pdftotext.cc
+@@ -329,6 +329,7 @@ int main(int argc, char *argv[])
+             fputs("<pre>\n", f);
+             if (f != stdout) {
+                 fclose(f);
++                f = nullptr;
+             }
+         }
+     }
+@@ -348,8 +349,9 @@ int main(int argc, char *argv[])
+                 printWordBBox(f, doc.get(), &textOut, firstPage, lastPage);
+             }
+         }
+-        if (f != stdout) {
++        if (f != stdout && f != nullptr) {
+             fclose(f);
++            f = nullptr;
+         }
+     } else {
+ 
+@@ -390,7 +392,7 @@ int main(int argc, char *argv[])
+         }
+         fputs("</body>\n", f);
+         fputs("</html>\n", f);
+-        if (f != stdout) {
++        if (f != stdout && f != nullptr) {
+             fclose(f);
+         }
+     }
+@@ -533,7 +533,9 @@ void printWordBBox(FILE *f, PDFDoc *doc,
+         for (int i = 0; i < word_length; ++i) {
+             word = wordlist->get(i);
+             word->getBBox(&xMinA, &yMinA, &xMaxA, &yMaxA);
+-            const std::string myString = myXmlTokenReplace(word->getText()->c_str());
++            GooString *wordText = word->getText();
++            const std::string myString = myXmlTokenReplace(wordText->c_str());
++            delete wordText;
+             fprintf(f, "    <word xMin=\"%f\" yMin=\"%f\" xMax=\"%f\" yMax=\"%f\">%s</word>\n", xMinA, yMinA, xMaxA, yMaxA, myString.c_str());
+         }
+         fprintf(f, "  </page>\n");
