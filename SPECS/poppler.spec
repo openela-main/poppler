@@ -3,7 +3,7 @@
 Summary: PDF rendering library
 Name:    poppler
 Version: 21.01.0
-Release: 21%{?dist}
+Release: 23%{?dist}
 License: (GPLv2 or GPLv3) and GPLv2+ and LGPLv2+ and MIT
 URL:     http://poppler.freedesktop.org/
 Source0: http://poppler.freedesktop.org/poppler-%{version}.tar.xz
@@ -52,6 +52,10 @@ Patch13: poppler-21.01.0-copy-filename.patch
 
 # https://issues.redhat.com/browse/RHEL-44333
 Patch14: poppler-21.01.0-pdfinfo-dests.patch
+
+# https://issues.redhat.com/browse/RHEL-131795
+# https://issues.redhat.com/browse/RHEL-131792
+Patch15: poppler-21.01.0-check-bitmap-in-combine.patch
 
 BuildRequires: make
 BuildRequires: cmake
@@ -246,6 +250,14 @@ test "$(pkg-config --modversion poppler-qt5)" = "%{version}"
 %{_mandir}/man1/*
 
 %changelog
+* Wed Dec 17 2025 Marek Kasik <mkasik@redhat.com> - 21.01.0-23
+- Bump release for build inheritance
+- Resolves: RHEL-131792
+
+* Mon Dec 15 2025 Marek Kasik <mkasik@redhat.com> - 21.01.0-22
+- Check bitmap in combine()
+- Resolves: RHEL-131795, RHEL-131792
+
 * Fri Jul 26 2024 Marek Kasik <mkasik@redhat.com> - 21.01.0-21
 - Fix crash in broken documents when using -dests
 - Resolves: RHEL-44333
