@@ -1,0 +1,30 @@
+From 1f151565bbca5be7449ba8eea6833051cc1baa41 Mon Sep 17 00:00:00 2001
+From: Albert Astals Cid <aacid@kde.org>
+Date: Mon, 31 Mar 2025 14:35:49 +0200
+Subject: Move isOk check to inside JBIG2Bitmap::combine
+
+
+diff --git a/poppler/JBIG2Stream.cc b/poppler/JBIG2Stream.cc
+index cf9e0c98..4e81d4a8 100644
+--- poppler-20.11.0/poppler/JBIG2Stream.cc
++++ poppler-20.11.0/poppler/JBIG2Stream.cc
+@@ -15,7 +15,7 @@
+ //
+ // Copyright (C) 2006 Raj Kumar <rkumar@archive.org>
+ // Copyright (C) 2006 Paul Walmsley <paul@booyaka.com>
+-// Copyright (C) 2006-2010, 2012, 2014-2020 Albert Astals Cid <aacid@kde.org>
++// Copyright (C) 2006-2010, 2012, 2014-2020, 2025 Albert Astals Cid <aacid@kde.org>
+ // Copyright (C) 2009 David Benjamin <davidben@mit.edu>
+ // Copyright (C) 2011 Edward Jiang <ejiang@google.com>
+ // Copyright (C) 2012 William Bader <williambader@hotmail.com>
+@@ -740,6 +740,10 @@ void JBIG2Bitmap::combine(JBIG2Bitmap *b
+     unsigned int src0, src1, src, dest, s1, s2, m1, m2, m3;
+     bool oneByte;
+ 
++    if (unlikely(!isOk())) {
++        return;
++    }
++
+     // check for the pathological case where y = -2^31
+     if (y < -0x7fffffff) {
+         return;

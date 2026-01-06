@@ -4,7 +4,7 @@
 Summary: PDF rendering library
 Name:    poppler
 Version: 20.11.0
-Release: 12%{?dist}
+Release: 13%{?dist}
 License: (GPLv2 or GPLv3) and GPLv2+ and LGPLv2+ and MIT
 URL:     http://poppler.freedesktop.org/
 Source0: http://poppler.freedesktop.org/poppler-%{version}.tar.xz
@@ -50,6 +50,9 @@ Patch30: poppler-20.11.0-fix-crash-in-FoFiType1C.patch
 
 # https://issues.redhat.com/browse/RHEL-44330
 Patch31: poppler-20.11.0-pdfinfo-dests.patch
+
+# https://issues.redhat.com/browse/RHEL-131786
+Patch32: poppler-20.11.0-check-bitmap-in-combine.patch
 
 BuildRequires: cmake
 BuildRequires: gettext-devel
@@ -255,6 +258,10 @@ test "$(pkg-config --modversion poppler-splash)" = "%{version}"
 %{_mandir}/man1/*
 
 %changelog
+* Tue Dec 16 2025 Marek Kasik <mkasik@redhat.com> - 20.11.0-13
+- Check bitmap in combine()
+- Resolves: RHEL-131786
+
 * Fri Jul 26 2024 Marek Kasik <mkasik@redhat.com> - 20.11.0-12
 - Fix crash in broken documents when using -dests
 - Fix versions in changelog
