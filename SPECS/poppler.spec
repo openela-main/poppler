@@ -17,7 +17,7 @@
 Summary: PDF rendering library
 Name:    poppler
 Version: 24.02.0
-Release: 6%{?dist}
+Release: 7%{?dist}
 License: (GPL-2.0-only OR GPL-3.0-only) AND GPL-2.0-or-later AND LGPL-2.0-or-later AND LGPL-2.1-or-later AND MIT
 URL:     http://poppler.freedesktop.org/
 Source0: http://poppler.freedesktop.org/poppler-%{version}.tar.xz
@@ -32,6 +32,8 @@ Patch3:  poppler-21.01.0-glib-introspection.patch
 Patch4:  poppler-24.02.0-pdfinfo-dests.patch
 
 Patch5:  poppler-24.02.0-covscan.patch
+
+Patch6:  poppler-24.02.0-check-bitmap-in-combine.patch
 
 BuildRequires: make
 BuildRequires: cmake
@@ -285,6 +287,10 @@ test "$(pkg-config --modversion poppler-qt6)" = "%{version}"
 %{_mandir}/man1/*
 
 %changelog
+* Mon Dec 15 2025 Marek Kasik <mkasik@redhat.com> - 24.02.0-7
+- Check bitmap in combine()
+- Resolves: RHEL-131783, RHEL-131782
+
 * Fri Jan 10 2025 Marek Kasik <mkasik@redhat.com> - 24.02.0-6
 - Backport fix for issues found by Coverity
 - Resolves: RHEL-71952
