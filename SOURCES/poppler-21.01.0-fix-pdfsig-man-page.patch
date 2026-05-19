@@ -1,0 +1,19 @@
+From 56453310d4241a917a4d2ff27fa76c2878f87508 Mon Sep 17 00:00:00 2001
+From: Marek Kasik <mkasik@redhat.com>
+Date: Fri, 26 Mar 2021 13:10:19 +0100
+Subject: utils: New paragraph for "-sign" in pdfsig.1
+
+Create new paragraph for "-sign" option in pdfsig.1 man page.
+
+diff --git a/utils/pdfsig.1 b/utils/pdfsig.1
+index e1f974c8..cbb21882 100644
+--- a/utils/pdfsig.1
++++ b/utils/pdfsig.1
+@@ -39,6 +39,7 @@ Do not validate the certificate.
+ .TP
+ .B \-dump
+ Dump all signatures into current directory.
++.TP
+ .B \-sign " number"
+ Sign the document in the signature field with the given number.
+ .TP

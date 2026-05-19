@@ -3,7 +3,7 @@
 Summary: PDF rendering library
 Name:    poppler
 Version: 21.01.0
-Release: 23%{?dist}
+Release: 24%{?dist}
 License: (GPLv2 or GPLv3) and GPLv2+ and LGPLv2+ and MIT
 URL:     http://poppler.freedesktop.org/
 Source0: http://poppler.freedesktop.org/poppler-%{version}.tar.xz
@@ -56,6 +56,9 @@ Patch14: poppler-21.01.0-pdfinfo-dests.patch
 # https://issues.redhat.com/browse/RHEL-131795
 # https://issues.redhat.com/browse/RHEL-131792
 Patch15: poppler-21.01.0-check-bitmap-in-combine.patch
+
+# https://issues.redhat.com/browse/RHEL-126070
+Patch16: poppler-21.01.0-fix-pdfsig-man-page.patch
 
 BuildRequires: make
 BuildRequires: cmake
@@ -250,6 +253,10 @@ test "$(pkg-config --modversion poppler-qt5)" = "%{version}"
 %{_mandir}/man1/*
 
 %changelog
+* Mon Dec 22 2025 Marek Kasik <mkasik@redhat.com> - 21.01.0-24
+- Fix pdfsig's man page
+- Resolves: RHEL-126070
+
 * Wed Dec 17 2025 Marek Kasik <mkasik@redhat.com> - 21.01.0-23
 - Bump release for build inheritance
 - Resolves: RHEL-131792
