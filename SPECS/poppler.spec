@@ -17,7 +17,7 @@
 Summary: PDF rendering library
 Name:    poppler
 Version: 24.02.0
-Release: 7%{?dist}
+Release: 7%{?dist}.2
 License: (GPL-2.0-only OR GPL-3.0-only) AND GPL-2.0-or-later AND LGPL-2.0-or-later AND LGPL-2.1-or-later AND MIT
 URL:     http://poppler.freedesktop.org/
 Source0: http://poppler.freedesktop.org/poppler-%{version}.tar.xz
@@ -34,6 +34,9 @@ Patch4:  poppler-24.02.0-pdfinfo-dests.patch
 Patch5:  poppler-24.02.0-covscan.patch
 
 Patch6:  poppler-24.02.0-check-bitmap-in-combine.patch
+
+# https://redhat.atlassian.net/browse/RHEL-180565
+Patch7:  poppler-24.02.0-tilingPatternFill-overflow.patch
 
 BuildRequires: make
 BuildRequires: cmake
@@ -287,6 +290,15 @@ test "$(pkg-config --modversion poppler-qt6)" = "%{version}"
 %{_mandir}/man1/*
 
 %changelog
+* Mon Jun 01 2026 Marek Kasik <mkasik@redhat.com> - 24.02.0-7.el10_2.2
+- Fix integer overflow in tilingPatternFill (CVE-2026-10118)
+- Bump NVR for MR
+- Resolves: RHEL-180565
+
+* Sat May 30 2026 Marek Kasik <mkasik@redhat.com> - 24.02.0-7.el10_2.1
+- Fix integer overflow in tilingPatternFill (CVE-2026-10118)
+- Resolves: RHEL-180565
+
 * Mon Dec 15 2025 Marek Kasik <mkasik@redhat.com> - 24.02.0-7
 - Check bitmap in combine()
 - Resolves: RHEL-131783, RHEL-131782
