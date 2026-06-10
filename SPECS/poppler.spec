@@ -3,7 +3,7 @@
 Summary: PDF rendering library
 Name:    poppler
 Version: 21.01.0
-Release: 24%{?dist}
+Release: 24%{?dist}.1
 License: (GPLv2 or GPLv3) and GPLv2+ and LGPLv2+ and MIT
 URL:     http://poppler.freedesktop.org/
 Source0: http://poppler.freedesktop.org/poppler-%{version}.tar.xz
@@ -59,6 +59,9 @@ Patch15: poppler-21.01.0-check-bitmap-in-combine.patch
 
 # https://issues.redhat.com/browse/RHEL-126070
 Patch16: poppler-21.01.0-fix-pdfsig-man-page.patch
+
+# https://issues.redhat.com/browse/RHEL-180580
+Patch17: poppler-21.01.0-tilingPatternFill-overflow.patch
 
 BuildRequires: make
 BuildRequires: cmake
@@ -253,6 +256,10 @@ test "$(pkg-config --modversion poppler-qt5)" = "%{version}"
 %{_mandir}/man1/*
 
 %changelog
+* Sun May 31 2026 Marek Kasik <mkasik@redhat.com> - 21.01.0-24.el9_8.1
+- Fix integer overflow in tilingPatternFill (CVE-2026-10118)
+- Resolves: RHEL-180580
+
 * Mon Dec 22 2025 Marek Kasik <mkasik@redhat.com> - 21.01.0-24
 - Fix pdfsig's man page
 - Resolves: RHEL-126070
