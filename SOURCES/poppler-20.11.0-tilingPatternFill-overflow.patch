@@ -1,0 +1,29 @@
+--- poppler-20.11.0/poppler/SplashOutputDev.cc
++++ poppler-20.11.0/poppler/SplashOutputDev.cc
+@@ -43,6 +43,7 @@
+ // Copyright (C) 2018 Adam Reichold <adam.reichold@t-online.de>
+ // Copyright (C) 2019 Christian Persch <chpe@src.gnome.org>
+ // Copyright (C) 2020 Oliver Sander <oliver.sander@tu-dresden.de>
++// Copyright (C) 2026 Marek Kasik <mkasik@redhat.com>
+ //
+ // To see a description of the changes please see the Changelog file that
+ // came with your tarball or type make ChangeLog if you are building from git
+@@ -4299,7 +4300,7 @@ bool SplashOutputDev::tilingPatternFill(
+     matc[2] = ctm[2];
+     matc[3] = ctm[3];
+ 
+-    if (surface_width == 0 || surface_height == 0 || repeatX * repeatY <= 4) {
++    if (surface_width == 0 || surface_height == 0 || repeatX * repeatY <= 4 || checkedMultiply(surface_width, repeatX, &result_width) || checkedMultiply(surface_height, repeatY, &result_height)) {
+         state->setCTM(savedCTM[0], savedCTM[1], savedCTM[2], savedCTM[3], savedCTM[4], savedCTM[5]);
+         return false;
+     }
+@@ -4347,9 +4348,6 @@ bool SplashOutputDev::tilingPatternFill(
+     imgData.repeatY = repeatY;
+     SplashBitmap *tBitmap = bitmap;
+     bitmap = formerBitmap;
+-    result_width = tBitmap->getWidth() * imgData.repeatX;
+-    result_height = tBitmap->getHeight() * imgData.repeatY;
+-
+     if (splashAbs(matc[1]) > splashAbs(matc[0])) {
+         kx = -matc[1];
+         ky = matc[2] - (matc[0] * matc[3]) / matc[1];

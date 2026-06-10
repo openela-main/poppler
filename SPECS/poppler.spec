@@ -4,7 +4,7 @@
 Summary: PDF rendering library
 Name:    poppler
 Version: 20.11.0
-Release: 13%{?dist}
+Release: 14%{?dist}
 License: (GPLv2 or GPLv3) and GPLv2+ and LGPLv2+ and MIT
 URL:     http://poppler.freedesktop.org/
 Source0: http://poppler.freedesktop.org/poppler-%{version}.tar.xz
@@ -53,6 +53,9 @@ Patch31: poppler-20.11.0-pdfinfo-dests.patch
 
 # https://issues.redhat.com/browse/RHEL-131786
 Patch32: poppler-20.11.0-check-bitmap-in-combine.patch
+
+# https://issues.redhat.com/browse/RHEL-180567
+Patch33: poppler-20.11.0-tilingPatternFill-overflow.patch
 
 BuildRequires: cmake
 BuildRequires: gettext-devel
@@ -258,6 +261,10 @@ test "$(pkg-config --modversion poppler-splash)" = "%{version}"
 %{_mandir}/man1/*
 
 %changelog
+* Sun May 31 2026 Marek Kasik <mkasik@redhat.com> - 20.11.0-14
+- Fix integer overflow in tilingPatternFill (CVE-2026-10118)
+- Resolves: RHEL-180567
+
 * Tue Dec 16 2025 Marek Kasik <mkasik@redhat.com> - 20.11.0-13
 - Check bitmap in combine()
 - Resolves: RHEL-131786
